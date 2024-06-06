@@ -16,22 +16,28 @@ locals {
   cluster_prefix         = var.cluster_prefix ? "${var.cluster_name}-" : ""
   control_plane_image_id = substr(var.control_plane_server_type, 0, 3) == "cax" ? data.hcloud_image.arm[0].id : data.hcloud_image.x86[0].id
   worker_image_id        = substr(var.worker_server_type, 0, 3) == "cax" ? data.hcloud_image.arm[0].id : data.hcloud_image.x86[0].id
-  control_planes = [for i in range(var.control_plane_count) : {
-    index              = i
-    name               = "${local.cluster_prefix}control-plane-${i + 1}"
-    ipv4_public        = local.control_plane_public_ipv4_list[i],
-    ipv6_public        = var.enable_ipv6 ? local.control_plane_public_ipv6_list[i] : null
-    ipv6_public_subnet = var.enable_ipv6 ? local.control_plane_public_ipv6_subnet_list[i] : null
-    ipv4_private       = local.control_plane_private_ipv4_list[i]
-  }]
-  workers = [for i in range(var.worker_count) : {
-    index              = i
-    name               = "${local.cluster_prefix}worker-${i + 1}"
-    ipv4_public        = local.worker_public_ipv4_list[i],
-    ipv6_public        = var.enable_ipv6 ? local.worker_public_ipv6_list[i] : null
-    ipv6_public_subnet = var.enable_ipv6 ? local.worker_public_ipv6_subnet_list[i] : null
-    ipv4_private       = local.worker_private_ipv4_list[i]
-  }]
+  control_planes         = [
+    for i in range(var.control_plane_count) : {
+      index                              = i
+      name                               = "${local.cluster_prefix}control-plane-${i + 1}"
+      ipv4_public                        = local.control_plane_public_ipv4_list[i],
+      ipv6_public                        = var.enable_ipv6 ? local.control_plane_public_ipv6_list[i] : null
+      ipv6_public_subnet                 = var.enable_ipv6 ? local.control_plane_public_ipv6_subnet_list[i] : null
+      ipv4_private                       = local.control_plane_private_ipv4_list[i]
+      hcloud_control_plane_node_location = var.hcloud_control_plane_node_location[i]
+    }
+  ]
+  workers = [
+    for i in range(var.worker_count) : {
+      index                       = i
+      name                        = "${local.cluster_prefix}worker-${i + 1}"
+      ipv4_public                 = local.worker_public_ipv4_list[i],
+      ipv6_public                 = var.enable_ipv6 ? local.worker_public_ipv6_list[i] : null
+      ipv6_public_subnet          = var.enable_ipv6 ? local.worker_public_ipv6_subnet_list[i] : null
+      ipv4_private                = local.worker_private_ipv4_list[i]
+      hcloud_worker_node_location = var.hcloud_worker_node_location[i]
+    }
+  ]
 }
 
 resource "tls_private_key" "ssh_key" {
@@ -40,16 +46,17 @@ resource "tls_private_key" "ssh_key" {
 }
 
 resource "hcloud_ssh_key" "this" {
-  name       = "${local.cluster_prefix}default"
-  public_key = coalesce(var.ssh_public_key, can(tls_private_key.ssh_key[0].public_key_openssh) ? tls_private_key.ssh_key[0].public_key_openssh : null)
+  name = "${local.cluster_prefix}default"
+  public_key = coalesce(var.ssh_public_key, can(tls_private_key.ssh_key[0].public_key_openssh) ?
+    tls_private_key.ssh_key[0].public_key_openssh : null)
   labels = {
     "cluster" = var.cluster_name
   }
 }
 
 resource "hcloud_server" "control_planes" {
-  for_each           = { for control_plane in local.control_planes : control_plane.name => control_plane }
-  datacenter         = data.hcloud_datacenter.this.name
+  for_each           = {for control_plane in local.control_planes : control_plane.name => control_plane}
+  datacenter         = each.value.hcloud_control_plane_node_location
   name               = each.value.name
   image              = local.control_plane_image_id
   server_type        = var.control_plane_server_type
@@ -76,7 +83,7 @@ resource "hcloud_server" "control_planes" {
   network {
     network_id = hcloud_network_subnet.nodes.network_id
     ip         = each.value.ipv4_private
-    alias_ips  = [] # fix for https://github.com/hetznercloud/terraform-provider-hcloud/issues/650
+    alias_ips = [] # fix for https://github.com/hetznercloud/terraform-provider-hcloud/issues/650
   }
 
   depends_on = [
@@ -93,8 +100,8 @@ resource "hcloud_server" "control_planes" {
 }
 
 resource "hcloud_server" "workers" {
-  for_each           = { for worker in local.workers : worker.name => worker }
-  datacenter         = data.hcloud_datacenter.this.name
+  for_each           = {for worker in local.workers : worker.name => worker}
+  datacenter         = each.value.hcloud_worker_node_location
   name               = each.value.name
   image              = local.worker_image_id
   server_type        = var.worker_server_type

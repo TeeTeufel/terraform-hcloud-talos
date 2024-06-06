@@ -193,6 +193,17 @@ variable "control_plane_count" {
   }
 }
 
+variable "hcloud_control_plane_node_location" {
+  type = list(string)
+  description = "List of node locations for control planes."
+  validation {
+    condition = alltrue([
+      for i in var.hcloud_control_plane_node_location : contains(["nbg1-dc3", "fsn1-dc14", "hel1-dc2", "ash-dc1" ,"hil-dc1"], i)
+      ])
+    error_message = "Elements in node list not equal to control_plane_count or does contain an invalid datacenter string."
+  }
+}
+
 variable "control_plane_server_type" {
   type        = string
   description = <<EOF
@@ -217,6 +228,17 @@ variable "worker_count" {
   validation {
     condition     = var.worker_count <= 99
     error_message = "The number of worker nodes must be less than 100."
+  }
+}
+
+variable "hcloud_worker_node_location" {
+  type = list(string)
+  description = "List of node locations for control planes."
+  validation {
+    condition = alltrue([
+      for i in var.hcloud_worker_node_location : contains(["nbg1-dc3", "fsn1-dc14", "hel1-dc2", "ash-dc1" ,"hil-dc1"], i)
+    ])
+    error_message = "Elements in node list not equal to control_plane_count or does contain an invalid datacenter string."
   }
 }
 
