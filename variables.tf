@@ -369,3 +369,27 @@ variable "disable_talos_coredns" {
   default     = false
   description = "If true, the CoreDNS delivered by Talos will not be deployed."
 }
+
+variable "enable_control_plane_lb" {
+  type = bool
+  default = false
+  description = "If true, no DNS record is necessary for kubeapi endpoint."
+}
+
+variable "control_plane_lb_type" {
+  type = string
+  default = "lb11"
+  description = "The lb type to use."
+}
+
+variable "enable_control_plane_lb_public_ip" {
+  type = bool
+  default = false
+  description = "If ture, the public IP of the load balancer will be activated. Note: hcloud currently does not utilize firewall rules for load balancers."
+}
+
+variable "control_plane_internal_ip" {
+  type = string
+  default = null
+  description = "The lb uses the IP .5 of the node_ipv4_cidr range by default. If the default cidr range was changed, pls verify if the lb IP address is still available."
+}

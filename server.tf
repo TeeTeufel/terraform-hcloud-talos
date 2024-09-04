@@ -81,6 +81,7 @@ resource "hcloud_server" "control_planes" {
 
   depends_on = [
     hcloud_network_subnet.nodes,
+    hcloud_load_balancer_target.control_plane_target,
     data.talos_machine_configuration.control_plane
   ]
 
