@@ -3,6 +3,7 @@ locals {
 }
 
 resource "hcloud_load_balancer" "control_plane" {
+  count = var.enable_control_plane_lb ? 1 : 0
   name               = "control_plane_lb"
   load_balancer_type = var.control_plane_lb_type
   network_zone       = "eu-central"
@@ -14,7 +15,8 @@ resource "hcloud_load_balancer" "control_plane" {
 }
 
 resource "hcloud_load_balancer_network" "control_plane" {
-  load_balancer_id        = hcloud_load_balancer.control_plane.id
+  count = var.enable_control_plane_lb ? 1 : 0
+  load_balancer_id        = hcloud_load_balancer.control_plane[0].id
   network_id              = hcloud_network.this.id
   ip                      = local.control_plane_lb_internal_ip
   enable_public_interface = var.enable_control_plane_lb_public_ip
@@ -24,7 +26,8 @@ resource "hcloud_load_balancer_network" "control_plane" {
 }
 
 resource "hcloud_load_balancer_service" "control_plane_kubeapi" {
-  load_balancer_id = hcloud_load_balancer.control_plane.id
+  count = var.enable_control_plane_lb ? 1 : 0
+  load_balancer_id = hcloud_load_balancer.control_plane[0].id
   protocol         = "tcp"
   listen_port      = 6443
   destination_port = 6443
@@ -32,7 +35,8 @@ resource "hcloud_load_balancer_service" "control_plane_kubeapi" {
 }
 
 resource "hcloud_load_balancer_service" "control_plane_talosapi" {
-  load_balancer_id = hcloud_load_balancer.control_plane.id
+  count = var.enable_control_plane_lb ? 1 : 0
+  load_balancer_id = hcloud_load_balancer.control_plane[0].id
   protocol         = "tcp"
   listen_port      = 50000
   destination_port = 50000
@@ -40,8 +44,9 @@ resource "hcloud_load_balancer_service" "control_plane_talosapi" {
 }
 
 resource "hcloud_load_balancer_target" "control_plane_target" {
+  count = var.enable_control_plane_lb ? 1 : 0
   type             = "label_selector"
-  load_balancer_id = hcloud_load_balancer.control_plane.id
+  load_balancer_id = hcloud_load_balancer.control_plane[0].id
   label_selector   = "role=control-plane"
   use_private_ip   = true
 }
